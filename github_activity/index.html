@@ -87,16 +87,16 @@
 
     <header class="mb-8 text-center">
         <h1 class="text-4xl font-extrabold text-blue-700">GitHub Activity Dashboard</h1>
-        <p class="text-gray-600 mt-2">Visualize your Pull Request contributions and discussion volume for any selected year.</p>
+        <p class="text-gray-600 mt-2">Visualize your Pull Request contributions and discussion volume for any selected date range.</p>
     </header>
 
     <div class="max-w-7xl mx-auto space-y-8"> 
         <!-- Input Form Card -->
         <div class="card p-6 rounded-xl">
             <h2 class="text-2xl font-semibold mb-4 border-b border-gray-300 pb-2 text-blue-600">Configuration</h2>
-            <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end"> 
+            <div class="grid grid-cols-1 md:grid-cols-8 gap-4 items-end">
                 
-                <!-- ROW 1: PAT, USERNAME, YEAR, BUTTONS -->
+                <!-- ROW 1: PAT, USERNAME, START DATE, END DATE, BUTTONS -->
                 
                 <!-- PAT Input (Columns 1-2) -->
                 <div class="col-span-2">
@@ -115,23 +115,27 @@
                     <input type="text" id="username" value="" placeholder="octocat" class="w-full px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 
-                <!-- Year Selector (Column 5) -->
+                <!-- Start Date Selector (Column 5) -->
                 <div class="col-span-1">
-                    <label for="yearSelector" class="block text-sm font-medium mb-1 text-gray-700">Year</label>
-                    <select id="yearSelector" class="w-full px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500">
-                        <!-- Options will be populated by JS -->
-                    </select>
+                    <label for="startDate" class="block text-sm font-medium mb-1 text-gray-700">Start Date</label>
+                    <input type="date" id="startDate" class="w-full px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
-                <!-- Generate Button (Column 6) -->
+                <!-- End Date Selector (Column 6) -->
                 <div class="col-span-1">
+                    <label for="endDate" class="block text-sm font-medium mb-1 text-gray-700">End Date</label>
+                    <input type="date" id="endDate" class="w-full px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Generate Button (Columns 7-8) -->
+                <div class="col-span-2">
                     <button id="generateBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out disabled:bg-gray-400" onclick="generateDashboard()">
                         Generate Dashboard
                     </button>
                 </div>
                 
                 <!-- ROW 2: ORGANIZATION FILTER (Full width below controls) -->
-                <div class="col-span-4">
+                <div class="col-span-6">
                     <label for="orgsContainer" class="block text-sm font-medium mb-1 text-gray-700">Filter by Organizations</label>
                     <div id="orgsContainer" class="w-full rounded-lg bg-white border border-gray-300 flex flex-wrap items-center focus-within:ring-blue-500 focus-within:border-blue-500">
                         <!-- Org tags go here -->
@@ -139,7 +143,7 @@
                     </div>
                 </div>
 
-                <!-- Download Button (Columns 5-6, aligned with org filter row) -->
+                <!-- Download Button (Columns 7-8, aligned with org filter row) -->
                 <div class="col-span-2 flex space-x-2 self-end">
                     <button id="downloadBtn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out disabled:bg-gray-400 hidden" onclick="downloadDashboardReport()">
                         <svg class="w-5 h-5 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -316,7 +320,8 @@
         const usernameInput = document.getElementById('username');
         const orgsContainer = document.getElementById('orgsContainer'); // NEW CONTAINER
         const orgsInput = document.getElementById('orgsInput'); // NEW INPUT FIELD FOR TAGS
-        const yearSelector = document.getElementById('yearSelector');
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
         const generateBtn = document.getElementById('generateBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const dashboardArea = document.getElementById('dashboardArea');
@@ -432,39 +437,44 @@
         }
 
         /**
-         * Populates the year selector dropdown.
+         * Sets default start and end dates.
          */
-        function populateYearSelector() {
-            const currentYear = new Date().getFullYear();
-            const startYear = 2018; 
+        function setDefaultDates() {
+            const today = new Date();
+            const currentYear = today.getFullYear();
 
-            for (let year = currentYear; year >= startYear; year--) {
-                const option = document.createElement('option');
-                option.value = year;
-                option.textContent = year;
-                if (year === currentYear) {
-                    option.selected = true;
-                }
-                yearSelector.appendChild(option);
-            }
+            // Format to YYYY-MM-DD
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            const startOfYear = new Date(currentYear, 0, 1);
+
+            startDateInput.value = formatDate(startOfYear);
+            endDateInput.value = formatDate(today);
         }
 
         /**
-         * Calculates the start and end dates/datetimes for the target year.
-         * @param {number} targetYear The year to generate dates for.
+         * Calculates the start and end dates/datetimes for the target date range.
+         * @param {string} startDateStr Start date string in YYYY-MM-DD.
+         * @param {string} endDateStr End date string in YYYY-MM-DD.
          * @returns {{dateOnlyStart: string, dateOnlyEnd: string, dateTimeStart: string, dateTimeEnd: string}}
          */
-        function getCurrentYearDates(targetYear) {
-            const TARGET_YEAR = targetYear; 
-
+        function getDateBounds(startDateStr, endDateStr) {
             // 1. For GitHub search syntax (YYYY-MM-DD..YYYY-MM-DD)
-            const dateOnlyStart = `${TARGET_YEAR}-01-01`; 
-            const dateOnlyEnd = `${TARGET_YEAR}-12-31`; 
+            const dateOnlyStart = startDateStr;
+            const dateOnlyEnd = endDateStr;
+
+            const startParts = startDateStr.split('-');
+            const endParts = endDateStr.split('-');
 
             // 2. For GraphQL DateTime fields (e.g., contributionsCollection)
-            // Uses UTC midnight to ensure the correct range boundaries.
-            const dateTimeStart = new Date(Date.UTC(TARGET_YEAR, 0, 1)).toISOString(); // Jan 1st 00:00:00Z
-            const dateTimeEnd = new Date(Date.UTC(TARGET_YEAR, 11, 31, 23, 59, 59)).toISOString(); // Dec 31st 23:59:59Z
+            // Uses UTC to ensure the correct range boundaries.
+            const dateTimeStart = new Date(Date.UTC(startParts[0], startParts[1] - 1, startParts[2], 0, 0, 0)).toISOString();
+            const dateTimeEnd = new Date(Date.UTC(endParts[0], endParts[1] - 1, endParts[2], 23, 59, 59)).toISOString();
 
             return {
                 dateOnlyStart: dateOnlyStart,
@@ -475,28 +485,42 @@
         }
         
         /**
-         * Generates an array of monthly date ranges (start/end) for a given year.
+         * Generates an array of monthly date ranges (start/end) for a given date range.
          * Used to split high-volume search queries into manageable chunks.
-         * @param {number} year 
+         * @param {string} startDateStr Start date string in YYYY-MM-DD.
+         * @param {string} endDateStr End date string in YYYY-MM-DD.
          * @returns {Array<{start: string, end: string}>}
          */
-        function getMonthlyDateRanges(year) {
+        function getDateRangesByMonth(startDateStr, endDateStr) {
             const ranges = [];
-            for (let month = 0; month < 12; month++) {
-                // Start of the month
-                const dateStart = new Date(year, month, 1);
-                // End of the month (Start of next month minus 1 millisecond)
-                const dateEnd = new Date(year, month + 1, 1);
-                dateEnd.setMilliseconds(-1);
+            const startParts = startDateStr.split('-');
+            const endParts = endDateStr.split('-');
 
-                const formatDate = (d) => {
-                    return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-                };
+            let currentStart = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+            const finalEnd = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+
+            finalEnd.setHours(23, 59, 59, 999);
+
+            const formatDate = (d) => {
+                return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+            };
+
+            while (currentStart <= finalEnd) {
+                // Determine the end of the current chunk (end of the current month)
+                let chunkEnd = new Date(currentStart.getFullYear(), currentStart.getMonth() + 1, 0);
+
+                // If chunkEnd goes beyond finalEnd, cap it at finalEnd
+                if (chunkEnd > finalEnd) {
+                    chunkEnd = finalEnd;
+                }
 
                 ranges.push({
-                    start: formatDate(dateStart),
-                    end: formatDate(dateEnd)
+                    start: formatDate(currentStart),
+                    end: formatDate(chunkEnd)
                 });
+
+                // Next start is the beginning of the next month
+                currentStart = new Date(chunkEnd.getFullYear(), chunkEnd.getMonth() + 1, 1);
             }
             return ranges;
         }
@@ -720,8 +744,8 @@
         /**
          * Fetches PRs by slicing the time range into monthly chunks to bypass the 1000-item search limit.
          */
-        async function fetchReviewedPRsByChunk(token, year, username, orgsQuery) {
-            const ranges = getMonthlyDateRanges(year);
+        async function fetchReviewedPRsByChunk(token, startDateStr, endDateStr, username, orgsQuery) {
+            const ranges = getDateRangesByMonth(startDateStr, endDateStr);
             const reviewedPRs = [];
             let apiReportedTotalCount = 0; // Use to track the cumulative issueCount sum
 
@@ -753,8 +777,8 @@
         /**
          * Fetches PR and Commit data from GitHub using GraphQL.
          */
-        async function fetchGitHubData(token, username, year, orgsQuery) {
-            const { dateOnlyStart, dateOnlyEnd, dateTimeStart, dateTimeEnd } = getCurrentYearDates(year);
+        async function fetchGitHubData(token, username, startDateStr, endDateStr, orgsQuery) {
+            const { dateOnlyStart, dateOnlyEnd, dateTimeStart, dateTimeEnd } = getDateBounds(startDateStr, endDateStr);
             const dateRangeSearch = `created:${dateOnlyStart}..${dateOnlyEnd}`;
             
             // --- OPTIMIZATION: Concurrently fetch independent data blocks ---
@@ -795,7 +819,7 @@
             const rateLimit = nonPaginatedData.rateLimit;
             
             // 3. Fetch ALL PRs Reviewed (Paginated + Chunked)
-            const reviewedPRData = await fetchReviewedPRsByChunk(token, year, username, orgsQuery);
+            const reviewedPRData = await fetchReviewedPRsByChunk(token, startDateStr, endDateStr, username, orgsQuery);
             
             // --- 4. Split Reviewed PRs in Client-Side ---
             // The totalReviewedCount is the sum of all monthly API issueCounts.
@@ -1036,7 +1060,7 @@
         /**
          * Renders or updates the Pie Chart for PRs Authored vs. PRs Reviewed.
          */
-        function renderChart(authoredCount, reviewedHumanCount, reviewedBotCount, year) {
+        function renderChart(authoredCount, reviewedHumanCount, reviewedBotCount, dateRangeText) {
             const canvas = document.getElementById('prPieChart');
             const ctx = canvas ? canvas.getContext('2d') : null;
 
@@ -1047,9 +1071,9 @@
             }
             
             const total = authoredCount + reviewedHumanCount + reviewedBotCount;
-            const chartTitle = `PRs Authored vs. Reviewed (${year})`;
+            const chartTitle = `PRs Authored vs. Reviewed (${dateRangeText})`;
             
-            summaryTitle.textContent = `${year} Activity Summary`;
+            summaryTitle.textContent = `${dateRangeText} Activity Summary`;
             totalSummary.textContent = total > 0 
                 ? `Total PR Activity: ${total}`
                 : `No PR activity found.`;
@@ -1149,7 +1173,7 @@
         /**
          * Renders or updates the Language Pie Chart for PRs Authored.
          */
-        function renderAuthoredLanguageChart(languageCounts, year) {
+        function renderAuthoredLanguageChart(languageCounts, dateRangeText) {
             const canvas = document.getElementById('languagePieChart');
             const ctx = canvas ? canvas.getContext('2d') : null;
 
@@ -1164,7 +1188,7 @@
             let labels = sortedLanguages.map(([name]) => name);
             let dataValues = sortedLanguages.map(([, count]) => count);
             let total = dataValues.reduce((sum, count) => sum + count, 0);
-            const chartTitle = `PRs Authored Language Breakdown (${year})`;
+            const chartTitle = `PRs Authored Language Breakdown (${dateRangeText})`;
 
             languageSummary.textContent = total > 0 
                 ? `PRs Authored Language Breakdown (${total} PRs)` 
@@ -1266,7 +1290,7 @@
         /**
          * Renders or updates the Language Pie Chart for PRs Reviewed (Human).
          */
-        function renderReviewedLanguageChart(languageCounts, year, totalAPICount) {
+        function renderReviewedLanguageChart(languageCounts, dateRangeText, totalAPICount) {
             const canvas = document.getElementById('reviewedLanguagePieChart');
             const ctx = canvas ? canvas.getContext('2d') : null;
 
@@ -1281,7 +1305,7 @@
             let labels = sortedLanguages.map(([name]) => name);
             let dataValues = sortedLanguages.map(([, count]) => count);
             let sampleTotal = dataValues.reduce((sum, count) => sum + count, 0);
-            const chartTitle = `PRs Reviewed Language Breakdown (${year})`;
+            const chartTitle = `PRs Reviewed Language Breakdown (${dateRangeText})`;
 
             let summaryText = `PRs Reviewed Language Breakdown (${sampleTotal} PRs analyzed)`;
             
@@ -1387,7 +1411,7 @@
         /**
          * Renders or updates the Language Pie Chart for PRs Reviewed (Autogenerated). (NEW CHART)
          */
-        function renderReviewedBotLanguageChart(languageCounts, year, totalAPICount) {
+        function renderReviewedBotLanguageChart(languageCounts, dateRangeText, totalAPICount) {
             const canvas = document.getElementById('reviewedBotLanguagePieChart');
             const ctx = canvas ? canvas.getContext('2d') : null;
 
@@ -1402,7 +1426,7 @@
             let labels = sortedLanguages.map(([name]) => name);
             let dataValues = sortedLanguages.map(([, count]) => count);
             let sampleTotal = dataValues.reduce((sum, count) => sum + count, 0);
-            const chartTitle = `PRs Reviewed (Autogenerated) Language Breakdown (${year})`;
+            const chartTitle = `PRs Reviewed (Autogenerated) Language Breakdown (${dateRangeText})`;
 
 
             let summaryText = `PRs Reviewed (Autogenerated) Language Breakdown (${sampleTotal} PRs analyzed)`;
@@ -1509,7 +1533,7 @@
         /**
          * Renders or updates the Bar Chart for PRs Authored Discussion Volume.
          */
-        function renderCommentDistributionChart(dataObject, year) {
+        function renderCommentDistributionChart(dataObject, dateRangeText) {
             const canvas = document.getElementById('commentBarChart');
             const ctx = canvas ? canvas.getContext('2d') : null;
 
@@ -1518,7 +1542,7 @@
                 return;
             }
             
-            const chartTitle = `PRs Authored Review Reply Distribution (${year})`;
+            const chartTitle = `PRs Authored Review Reply Distribution (${dateRangeText})`;
 
             commentSummary.textContent = dataObject.totalPRsAnalyzed > 0 
                 ? `Total PRs Authored analyzed: ${dataObject.totalPRsAnalyzed}` 
@@ -1660,7 +1684,7 @@
         /**
          * Renders the Authored PR Code Volume table (NEW TABLE).
          */
-        function renderCodeVolumeTable(authoredPrs, year) {
+        function renderCodeVolumeTable(authoredPrs) {
              let totalAdditions = 0;
              let totalDeletions = 0;
              
@@ -1768,9 +1792,11 @@
             downloadBtn.textContent = 'Generating...';
             showMessage("Generating print-ready report...", 'info');
             
-            const year = yearSelector.value;
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            const dateRangeText = `${startDate} to ${endDate}`;
             const username = usernameInput.value;
-            const reportTitle = `GitHub Activity Report - ${username} (${year})`;
+            const reportTitle = `GitHub Activity Report - ${username} (${dateRangeText})`;
 
             // Get IDs of all chart containers (the parent .card div)
             const chartContainers = [
@@ -1936,15 +1962,28 @@
             
             const token = patInput.value.trim();
             const username = usernameInput.value.trim();
-            const year = parseInt(yearSelector.value);
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
             
             if (!token || !username) {
                 showMessage("Please enter both a valid GitHub PAT and Username.", 'error');
                 return;
             }
 
+            if (!startDate || !endDate) {
+                showMessage("Please select both a start date and an end date.", 'error');
+                return;
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+                showMessage("Start date cannot be after end date.", 'error');
+                return;
+            }
+
+            const dateRangeText = `${startDate} to ${endDate}`;
+
             generateBtn.disabled = true;
-            generateBtn.textContent = `Generating Dashboard for ${year}...`;
+            generateBtn.textContent = `Generating Dashboard...`;
             
             // Build the organization filter query fragment
             const orgsQuery = getOrgsQueryFragment();
@@ -1952,7 +1991,7 @@
 
             try {
                 // 1. Fetch Data
-                const data = await fetchGitHubData(token, username, year, orgsQuery);
+                const data = await fetchGitHubData(token, username, startDate, endDate, orgsQuery);
 
                 // 2. Update Rate Limit Display
                 if (data.rateLimit) {
@@ -1980,20 +2019,20 @@
                 
                 // 5. Render All UI Components (using a slight delay to ensure canvas rendering)
                 renderOverallTotals(data, authoredCount, reviewedHumanCount, reviewedBotCount, totalReviewedAPICount);
-                renderCodeVolumeTable(prDataCache.authored, year); // NEW TABLE RENDER
+                renderCodeVolumeTable(prDataCache.authored); // NEW TABLE RENDER
                 renderRepoCommits(commitContributionsByRepo, username, activeOrgs); // PASSING USERNAME AND ORGS HERE
                 
                 // RENDER FIVE CHARTS
-                renderChart(authoredCount, reviewedHumanCount, reviewedBotCount, year);
-                renderAuthoredLanguageChart(authoredLanguageCounts, year);
+                renderChart(authoredCount, reviewedHumanCount, reviewedBotCount, dateRangeText);
+                renderAuthoredLanguageChart(authoredLanguageCounts, dateRangeText);
                 
                 // Pass true total to reviewed charts for discrepancy warning
                 const reviewedSampleTotal = reviewedHumanCount + reviewedBotCount;
 
-                renderReviewedLanguageChart(reviewedLanguageCounts, year, totalReviewedAPICount); 
-                renderReviewedBotLanguageChart(reviewedBotLanguageCounts, year, totalReviewedAPICount);
+                renderReviewedLanguageChart(reviewedLanguageCounts, dateRangeText, totalReviewedAPICount);
+                renderReviewedBotLanguageChart(reviewedBotLanguageCounts, dateRangeText, totalReviewedAPICount);
                 
-                renderCommentDistributionChart(commentDistributionData, year);
+                renderCommentDistributionChart(commentDistributionData, dateRangeText);
 
                 dashboardArea.classList.remove('hidden');
                 downloadBtn.classList.remove('hidden'); // Show download button
@@ -2033,7 +2072,7 @@
 
         // --- Initial Setup ---
         window.onload = function () {
-            populateYearSelector();
+            setDefaultDates();
             
             // Populate default orgs and/or load from URL
             const urlParams = new URLSearchParams(window.location.search);
